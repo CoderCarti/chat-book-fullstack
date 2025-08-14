@@ -48,7 +48,7 @@
       });
 
       const res = await axios.post(
-        "http://localhost:5000/api/auth/login", // Correct port
+        "https://chat-book-server.vercel.app/api/auth/login", // Correct port
         {
           email: formData.email.trim(),
           password: formData.password
@@ -74,7 +74,7 @@
     const handleSubmit = async (e) => {
       e.preventDefault();
       try {
-        const res = await axios.post("http://localhost:5000/api/auth/register", formData);
+        const res = await axios.post("https://chat-book-server.vercel.app/api/auth/register", formData);
         localStorage.setItem("token", res.data.token);
         alert("Registered successfully!");
       } catch (err) {
