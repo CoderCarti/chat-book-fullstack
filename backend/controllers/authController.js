@@ -9,7 +9,7 @@ exports.registerUser = async (req, res) => {
     if (existingUser) return res.status(400).json({ message: "User already exists" });
 
     const user = await User.create({ username, email, password });
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_KEY, { expiresIn: "1d" });
 
     res.status(201).json({ token, user });
   } catch (error) {
@@ -39,7 +39,7 @@ exports.loginUser = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_KEY, { expiresIn: "1d" });
 
     res.status(200).json({ 
       token, 
