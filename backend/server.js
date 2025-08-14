@@ -6,13 +6,6 @@ const authRoutes = require("./routes/authRoutes");
 
 dotenv.config();
 
-const allowedOrigins = [
-  'http://localhost:5173',
-  'https://chat-book-server.vercel.app',
-  'https://chat-book-silk.vercel.app'
-];
-
-
 // Database connection
 const connectDB = async () => {
   try {
@@ -31,12 +24,18 @@ connectDB();
 const app = express();
 
 // Middleware
-app.use(cors({
-  origin: true, // reflect the request origin
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
+app.use(
+  cors({
+    origin: [
+      'http://localhost:5173',
+      'https://chat-book-silk.vercel.app',
+      'https://chat-book-server.vercel.app'
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  })
+);
 app.use(express.json());
 
 // Routes
