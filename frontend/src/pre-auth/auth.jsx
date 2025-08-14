@@ -56,7 +56,8 @@
         {
           headers: {
             "Content-Type": "application/json"
-          }
+          },
+           withCredentials: true // Add this
         }
       );
 
@@ -74,9 +75,16 @@
     const handleSubmit = async (e) => {
       e.preventDefault();
       try {
-        const res = await axios.post("https://chat-book-server.vercel.app/api/auth/register", formData);
-        localStorage.setItem("token", res.data.token);
-        alert("Registered successfully!");
+        const res = await axios.post(
+      "https://chat-book-server.vercel.app/api/auth/register", 
+      formData,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        withCredentials: true // Add this
+      }
+    );
       } catch (err) {
         alert(err.response.data.message);
       }
