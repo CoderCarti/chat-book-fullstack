@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "prebuild": "node -e \"try { require('fs').chmodSync('node_modules/.bin/vite', 0o755); } catch (e) {}\"",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
