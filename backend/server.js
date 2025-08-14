@@ -9,7 +9,7 @@ dotenv.config();
 // Database connection
 const connectDB = async () => {
   try {
-    await mongoose.connect("mongodb+srv://chatbook:xs6avpv2FbELoyBD@chatbook.eixa1ec.mongodb.net/");
+    await mongoose.connect("mongodb+srv://chatbook:chatbook0815@chatbook.eixa1ec.mongodb.net/");
     console.log("MongoDB Connected");
   } catch (error) {
     console.error("Database connection failed", error);
