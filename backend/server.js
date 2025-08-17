@@ -2,14 +2,16 @@ const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require("dotenv");
 const cors = require("cors");
+const cookieParser = require('cookie-parser');
 const authRoutes = require("./routes/authRoutes");
+const profileRoutes = require("./routes/profileRoutes"); // Add profile routes
 
 dotenv.config();
 
 // Database connection
 const connectDB = async () => {
   try {
-    await mongoose.connect("mongodb+srv://chatbook:chatbook0815@chatbook.eixa1ec.mongodb.net/");
+    await mongoose.connect(process.env.MONGO_URI || "mongodb+srv://chatbook:chatbook0815@chatbook.eixa1ec.mongodb.net/");
     console.log("MongoDB Connected");
   } catch (error) {
     console.error("Database connection failed", error);
@@ -33,13 +35,24 @@ app.use(
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Set-Cookie'],
+    exposedHeaders: ['Set-Cookie']
   })
 );
+
+// Add cookie parser middleware before express.json()
+app.use(cookieParser());
 app.use(express.json());
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/profile", profileRoutes); // Add profile routes
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Something broke!' });
+});
 
 // Start server
 const PORT = process.env.PORT || 5000;
