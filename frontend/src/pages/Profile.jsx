@@ -32,7 +32,7 @@ const Profile = () => {
 
     const fetchUserData = async () => {
       try {
-        const response = await axios.get('/api/profile', {
+        const response = await axios.get('https://chat-book-server.vercel.app/api/profile', {
           headers: {
             'x-auth-token': token
           },
@@ -84,7 +84,7 @@ const Profile = () => {
         profilePicture: profilePic
       };
 
-      await axios.put('/api/profile', updatedData, {
+      await axios.put('https://chat-book-server.vercel.app/api/profile', updatedData, {
         headers: {
           'x-auth-token': token,
           'Content-Type': 'application/json'

@@ -4,7 +4,7 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const cookieParser = require('cookie-parser');
 const authRoutes = require("./routes/authRoutes");
-const profileRoutes = require("./routes/profileRoutes"); // Add profile routes
+const profileRoutes = require("./routes/profileRoutes");
 
 dotenv.config();
 
@@ -25,7 +25,10 @@ connectDB();
 // Initialize Express app
 const app = express();
 
-// Middleware
+// Handle OPTIONS requests first
+app.options('*', cors());
+
+// Enhanced CORS middleware
 app.use(
   cors({
     origin: [
@@ -35,8 +38,19 @@ app.use(
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Set-Cookie'],
-    exposedHeaders: ['Set-Cookie']
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'x-auth-token',  // Explicitly allow your custom header
+      'Set-Cookie'
+    ],
+    exposedHeaders: [
+      'Set-Cookie',
+      'x-auth-token'  // Expose if needed by the client
+    ],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   })
 );
 
@@ -46,7 +60,7 @@ app.use(express.json());
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/profile", profileRoutes); // Add profile routes
+app.use("/api/profile", profileRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
