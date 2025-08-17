@@ -1,10 +1,46 @@
 const mongoose = require('mongoose');
-const bcrypt = require ('bcryptjs');
+const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
-  password: { type: String, required: true }
+  password: { type: String, required: true },
+  profilePicture: {
+    type: String,
+    default: 'https://vercel-blob-public-url.com/default-avatar.jpg'
+  },
+  phoneNumber: {
+    type: String,
+    default: ''
+  },
+  dateOfBirth: {
+    type: Date,
+    default: null
+  },
+  country: {
+    type: String,
+    default: ''
+  },
+  city: {
+    type: String,
+    default: ''
+  },
+  postalCode: {
+    type: String,
+    default: ''
+  },
+  fullName: {
+    type: String,
+    default: ''
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
 });
 
 // Hash password before save
@@ -14,5 +50,10 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-const User = mongoose.model("User", userSchema);
-module.exports = User;
+// Update timestamp
+userSchema.pre("save", function(next) {
+  this.updatedAt = Date.now();
+  next();
+});
+
+module.exports = mongoose.model("User", userSchema);

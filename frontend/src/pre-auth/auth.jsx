@@ -31,64 +31,72 @@
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
     const [formData, setFormData] = useState({ username: "", email: "", password: "" });
     const [isLogin, setIsLogin] = useState(true); // Track if login or signup form
+    const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    
-    // Validation
-    if (!formData.email || !formData.password) {
-      alert("Please fill in both fields");
-      return;
-    }
+  e.preventDefault();
+  
+  // Validation
+  if (!formData.email || !formData.password) {
+    alert("Please fill in both fields");
+    return;
+  }
 
-    try {
-      console.log("Sending:", { 
-        email: formData.email.trim(), 
-        password: formData.password 
-      });
+  setIsLoading(true); // Start loading
+  try {
+    console.log("Sending:", { 
+      email: formData.email.trim(), 
+      password: formData.password 
+    });
 
-      const res = await axios.post(
-        "https://chat-book-server.vercel.app/api/auth/login", // Correct port
-        {
-          email: formData.email.trim(),
-          password: formData.password
+    const res = await axios.post(
+      "https://chat-book-server.vercel.app/api/auth/login",
+      {
+        email: formData.email.trim(),
+        password: formData.password
+      },
+      {
+        headers: {
+          "Content-Type": "application/json"
         },
-        {
-          headers: {
-            "Content-Type": "application/json"
-          },
-           withCredentials: true // Add this
-        }
-      );
+        withCredentials: true
+      }
+    );
 
-      localStorage.setItem("token", res.data.token);
-      navigate("/homepage");
-      
-    } catch (err) {
-      console.error("Full error:", err);
-      alert(err.response?.data?.message || "Login failed. Check console.");
-    }
-  };
+    localStorage.setItem("token", res.data.token);
+    navigate("/homepage");
+    
+  } catch (err) {
+    console.error("Full error:", err);
+    alert(err.response?.data?.message || "Login failed. Check console.");
+  } finally {
+    setIsLoading(false); // Stop loading in any case
+  }
+};
 
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-    const handleSubmit = async (e) => {
-      e.preventDefault();
-      try {
-        const res = await axios.post(
+   const handleSubmit = async (e) => {
+  e.preventDefault();
+  setIsLoading(true); // Start loading
+  try {
+    const res = await axios.post(
       "https://chat-book-server.vercel.app/api/auth/register", 
       formData,
       {
         headers: {
           "Content-Type": "application/json",
         },
-        withCredentials: true // Add this
+        withCredentials: true
       }
     );
-      } catch (err) {
-        alert(err.response.data.message);
-      }
-    };
+    // Optionally handle successful registration (like auto-login)
+  } catch (err) {
+    alert(err.response.data.message);
+  } finally {
+    setIsLoading(false); // Stop loading
+  }
+};
 
     useEffect(() => {
       const handleResize = () => {
@@ -107,33 +115,28 @@
 
     // ✅ Google Login handler
     const loginWithGoogle = useGoogleLogin({
-      onSuccess: async (tokenResponse) => {
-        try {
-          const res = await fetch(
-            `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${tokenResponse.access_token}`
-          );
-          const profile = await res.json();
-          console.log("Google Profile:", profile);
+  onSuccess: async (tokenResponse) => {
+    setIsLoading(true); // Start loading
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${tokenResponse.access_token}`
+      );
+      const profile = await res.json();
+      console.log("Google Profile:", profile);
 
-          // Save user info to localStorage
-          localStorage.setItem("user", JSON.stringify(profile));
-
-          // Optional: Send token to backend for verification & DB handling
-          // await fetch("/api/google-login", {
-          //   method: "POST",
-          //   headers: { "Content-Type": "application/json" },
-          //   body: JSON.stringify({ token: tokenResponse.access_token }),
-          // });
-
-          navigate("/homepage");
-        } catch (error) {
-          console.error("Google login error:", error);
-        }
-      },
-      onError: () => {
-        console.log("Google Login Failed");
-      },
-    });
+      localStorage.setItem("user", JSON.stringify(profile));
+      navigate("/homepage");
+    } catch (error) {
+      console.error("Google login error:", error);
+    } finally {
+      setIsLoading(false); // Stop loading
+    }
+  },
+  onError: () => {
+    console.log("Google Login Failed");
+    setIsLoading(false); // Stop loading
+  },
+});
 
     const getCardClass = (index) => {
       if (index === currentIndex)
@@ -164,7 +167,7 @@
             className="border rounded-2xl mt-3 p-3 flex items-center justify-center gap-2 font-semibold hover:bg-amber-200 transition cursor-pointer"
           >
             <img src={Google} className="w-6 h-6" alt="Google" />
-            Login with Google
+            Sign In with Google
           </button>
 
           <div className="flex items-center mt-3">
@@ -182,6 +185,7 @@
               required
               value={formData.email}
               onChange={handleChange}
+              disabled={isLoading}
             />
 
             <label className="mt-4 font-semibold">Password</label>
@@ -194,6 +198,7 @@
                 placeholder="*******"
                 value={formData.password}
                 onChange={handleChange}
+                disabled={isLoading}
               />
               <button
                 type="button"
@@ -219,11 +224,18 @@
             </span>
           </div>
           <button
-            type="submit"
-            className="bg-blue-500 text-white rounded-xl p-3 mt-6 hover:bg-blue-600 cursor-pointer"
-          >
-            {isLogin ? "Login" : "Sign Up"}
-          </button>
+          type="submit"
+          className="bg-blue-500 text-white rounded-xl p-3 mt-6 hover:bg-blue-600 cursor-pointer flex justify-center items-center"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          ) : null}
+          {isLogin ? "Sign In" : "Sign Up"}
+        </button>
           <p className="text-sm mt-4 text-center">
             Don't have an account?{" "}
             <button
@@ -270,6 +282,7 @@
             placeholder="John Doe"
             required
             onChange={handleChange}
+            disabled={isLoading}
           />
           <label className="mt-4 font-semibold">Email Address</label>
           <input
@@ -279,6 +292,7 @@
             placeholder="example@gmail.com"
             required
             onChange={handleChange}
+            disabled={isLoading}
           />
           <label className="mt-4 font-semibold">Password</label>
           <input
@@ -288,11 +302,19 @@
             placeholder="*******"
             required
             onChange={handleChange}
+            disabled={isLoading}
           />
           <button
             type="submit"
-            className="bg-green-500 text-white rounded-xl p-3 mt-6 hover:bg-green-600 cursor-pointer"
+            className="bg-green-500 text-white rounded-xl p-3 mt-6 hover:bg-green-600 cursor-pointer flex justify-center items-center"
+            disabled={isLoading}
           >
+            {isLoading ? (
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : null}
             Sign Up
           </button>
           <p className="text-sm mt-4 text-center">
@@ -302,7 +324,7 @@
               className="text-blue-500 hover:underline cursor-pointer"
               onClick={() => setIsSwapped(false)}
             >
-              Login
+              Sign In
             </button>
           </p>
         </form>
