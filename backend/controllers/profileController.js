@@ -36,23 +36,24 @@ exports.updateProfile = async (req, res) => {
       postalCode
     };
 
-    // Handle profile picture upload
-     // Handle profile picture upload/removal
-    if (profilePicture === 'remove') {
-      updateData.profilePicture = ""; // Remove profile picture
-    } else if (profilePicture && profilePicture.startsWith('data:image')) {
-      // Upload new image to Vercel Blob
+    if (profilePicture === "remove") {
+      // Explicit removal
+      updateData.profilePicture = "";
+    } else if (profilePicture && profilePicture.startsWith("data:image")) {
+      // New upload → store to Vercel Blob
       const blob = await put(
-        `profile-pictures/${req.user.id}-${Date.now()}.${profilePicture.split(';')[0].split('/')[1]}`, // Adds extension
-        profilePicture, 
+        `profile-pictures/${req.user.id}-${Date.now()}.${profilePicture.split(";")[0].split("/")[1]}`,
+        profilePicture,
         {
-          access: 'public',
-          token: process.env.BLOB_READ_WRITE_TOKEN
+          access: "public",
+          token: process.env.BLOB_READ_WRITE_TOKEN,
         }
       );
       updateData.profilePicture = blob.url;
+    } else if (profilePicture && profilePicture.startsWith("http")) {
+      // Already an existing URL → keep as is
+      updateData.profilePicture = profilePicture;
     }
-    // If it's already a URL, it will remain unchanged
 
     const updatedUser = await User.findByIdAndUpdate(
       req.user.id,

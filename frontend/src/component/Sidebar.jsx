@@ -19,7 +19,7 @@ import { IoMdPersonAdd } from "react-icons/io";
 
 const Sidebar = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(true); // Start collapsed by default
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isChannelsOpen, setIsChannelsOpen] = useState(false);
@@ -28,7 +28,6 @@ const Sidebar = () => {
   const channelsRef = useRef(null);
   const navigate = useNavigate();
 
-  // Close flyouts when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (channelsRef.current && !channelsRef.current.contains(event.target)) {
@@ -45,9 +44,8 @@ const Sidebar = () => {
     };
   }, []);
 
-  // Auto-expand/collapse based on hover
   useEffect(() => {
-    if (window.innerWidth >= 768) { // Only for desktop
+    if (window.innerWidth >= 768) {
       setIsCollapsed(!isHovered);
     }
   }, [isHovered]);
@@ -56,7 +54,6 @@ const Sidebar = () => {
     const token = localStorage.getItem('token');
     setIsLoggedIn(!!token);
     
-    // Check screen size - always collapsed on mobile
     const handleResize = () => {
       if (window.innerWidth < 768) {
         setIsCollapsed(true);
@@ -87,17 +84,33 @@ const Sidebar = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
+  const handleMobileClick = (callback) => {
+    if (window.innerWidth < 768) {
+      setIsMobileMenuOpen(false);
+    }
+    if (callback) callback();
+  };
+
   return (
     <>
-      {/* Mobile menu button - only shows on small screens */}
+      {/* Mobile menu button */}
       <div className="md:hidden fixed top-4 left-4 z-50">
         <button 
           onClick={toggleMobileMenu}
-          className="p-2 rounded-md bg-white shadow-md text-gray-700 hover:text-green-500"
+          className="p-3 rounded-md bg-white shadow-md text-gray-700 hover:text-green-500"
+          aria-label="Toggle menu"
         >
-          {isMobileMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+          {isMobileMenuOpen ? <FiX size={28} /> : <FiMenu size={28} />}
         </button>
       </div>
+
+      {/* Overlay for mobile */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 z-30 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
 
       <div 
         ref={sidebarRef}
@@ -128,6 +141,7 @@ const Sidebar = () => {
             <button 
               onClick={() => setIsCollapsed(!isCollapsed)}
               className="text-gray-500 hover:text-green-500 cursor-pointer hidden md:block"
+              aria-label="Collapse sidebar"
             >
               «
             </button>
@@ -139,39 +153,45 @@ const Sidebar = () => {
           <NavLink
             to="/homepage"
             className={({ isActive }) => 
-              `flex items-center p-3 rounded-lg transition-colors ${isActive ? 'bg-green-100 text-green-600' : 'hover:bg-gray-200 text-gray-700'}`
+              `flex items-center p-4 rounded-lg transition-colors ${isActive ? 'bg-green-100 text-green-600' : 'hover:bg-gray-200 text-gray-700'}`
             }
-            onClick={() => window.innerWidth < 768 && setIsMobileMenuOpen(false)}
+            onClick={() => handleMobileClick()}
           >
-            <FiHome className="text-xl" />
-            {!isCollapsed && <span className="ml-3">Home</span>}
+            <FiHome className="text-xl min-w-[24px]" />
+            {!isCollapsed && <span className="ml-4">Home</span>}
           </NavLink>
 
-          {/* Channels Section with Flyout */}
-          <div className="relative" ref={channelsRef}>
+          {/* Improved Channels Section */}
+           <div className="relative" ref={channelsRef}>
             <button
               onClick={toggleChannels}
-              className={`flex items-center justify-between w-full p-3 rounded-lg hover:bg-gray-200 transition-colors ${isChannelsOpen ? 'bg-green-100 text-green-600' : 'text-gray-700'}`}
+              className={`flex items-center justify-between w-full p-4 rounded-lg hover:bg-gray-200 transition-colors ${isChannelsOpen ? 'bg-green-100 text-green-600' : 'text-gray-700'}`}
+              aria-expanded={isChannelsOpen}
             >
               <div className="flex items-center">
-                <FiHash className="text-xl" />
-                {!isCollapsed && <span className="ml-3">Channels</span>}
+                <FiHash className="text-xl min-w-[24px]" />
+                {!isCollapsed && <span className="ml-4">Channels</span>}
               </div>
               {!isCollapsed && (
                 isChannelsOpen ? <FiChevronUp /> : <FiChevronDown />
               )}
             </button>
 
-            {/* Channels Flyout Menu */}
+            {/* Right-extending dropdown */}
             {(isChannelsOpen || (isCollapsed && isMobileMenuOpen)) && (
               <div className={`
-                ${isCollapsed ? 'absolute left-full top-0 ml-1' : 'relative mt-1'}
-                bg-white rounded-lg shadow-lg border border-gray-200 min-w-[200px] z-50
+                absolute left-full top-0 ml-1
+                bg-white rounded-lg shadow-lg border border-gray-200 z-50
+                ${isMobileMenuOpen ? 'w-[calc(100vw-5rem)] max-w-md' : 'w-64'}
+                ${isCollapsed && !isMobileMenuOpen ? '' : 'md:left-0 md:ml-0'}
               `}>
                 <div className="p-2">
                   <div className="flex justify-between items-center px-3 py-2 border-b">
                     <h3 className="font-medium">CHANNELS</h3>
-                    <button className="text-green-500 hover:text-green-700">
+                    <button 
+                      className="text-green-500 hover:text-green-700 p-2"
+                      aria-label="Add channel"
+                    >
                       <FiPlus />
                     </button>
                   </div>
@@ -181,14 +201,11 @@ const Sidebar = () => {
                         <NavLink
                           to={`/channels/${channel}`}
                           className={({ isActive }) => 
-                            `flex items-center px-3 py-2 hover:bg-gray-100 rounded ${isActive ? 'text-green-600' : 'text-gray-700'}`
+                            `flex items-center px-4 py-3 hover:bg-gray-100 rounded ${isActive ? 'text-green-600' : 'text-gray-700'}`
                           }
-                          onClick={() => {
-                            window.innerWidth < 768 && setIsMobileMenuOpen(false);
-                            setIsChannelsOpen(false);
-                          }}
+                          onClick={() => handleMobileClick(() => setIsChannelsOpen(false))}
                         >
-                          <FiHash className="mr-2 text-sm" />
+                          <FiHash className="mr-3 text-sm" />
                           {channel}
                         </NavLink>
                       </li>
@@ -202,23 +219,23 @@ const Sidebar = () => {
           <NavLink
             to="/messages"
             className={({ isActive }) => 
-              `flex items-center p-3 rounded-lg transition-colors ${isActive ? 'bg-green-100 text-green-600' : 'hover:bg-gray-200 text-gray-700'}`
+              `flex items-center p-4 rounded-lg transition-colors ${isActive ? 'bg-green-100 text-green-600' : 'hover:bg-gray-200 text-gray-700'}`
             }
-            onClick={() => window.innerWidth < 768 && setIsMobileMenuOpen(false)}
+            onClick={() => handleMobileClick()}
           >
-            <FiMail className="text-xl" />
-            {!isCollapsed && <span className="ml-3">Messages</span>}
+            <FiMail className="text-xl min-w-[24px]" />
+            {!isCollapsed && <span className="ml-4">Messages</span>}
           </NavLink>
 
           <NavLink
             to="/add-friend"
             className={({ isActive }) => 
-              `flex items-center p-3 rounded-lg transition-colors ${isActive ? 'bg-green-100 text-green-600' : 'hover:bg-gray-200 text-gray-700'}`
+              `flex items-center p-4 rounded-lg transition-colors ${isActive ? 'bg-green-100 text-green-600' : 'hover:bg-gray-200 text-gray-700'}`
             }
-            onClick={() => window.innerWidth < 768 && setIsMobileMenuOpen(false)}
+            onClick={() => handleMobileClick()}
           >
-            <IoMdPersonAdd className="text-xl" />
-            {!isCollapsed && <span className="ml-3">Add Friend</span>}
+            <IoMdPersonAdd className="text-xl min-w-[24px]" />
+            {!isCollapsed && <span className="ml-4">Add Friend</span>}
           </NavLink>
         </nav>
 
@@ -228,14 +245,15 @@ const Sidebar = () => {
             <div className="space-y-1">
               <button
                 onClick={toggleProfile}
-                className={`flex items-center justify-between w-full p-3 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer ${isCollapsed ? 'justify-center' : ''}`}
+                className={`flex items-center justify-between w-full p-4 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer ${isCollapsed ? 'justify-center' : ''}`}
+                aria-expanded={isProfileOpen}
               >
                 <div className="flex items-center">
                   <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
                     <FiUser />
                   </div>
                   {!isCollapsed && (
-                    <span className="ml-3 font-medium">My Profile</span>
+                    <span className="ml-4 font-medium">My Profile</span>
                   )}
                 </div>
                 {!isCollapsed && (
@@ -243,46 +261,44 @@ const Sidebar = () => {
                 )}
               </button>
 
-              {/* Profile Dropdown */}
               {isProfileOpen && !isCollapsed && (
                 <div className="ml-11 pl-2 space-y-1 border-l-2 border-gray-200">
                   <NavLink
                     to="/profile"
                     className={({ isActive }) => 
-                      `flex items-center p-2 rounded-lg transition-colors ${isActive ? 'bg-green-100 text-green-600' : 'hover:bg-gray-200 text-gray-700'}`
+                      `flex items-center p-3 rounded-lg transition-colors ${isActive ? 'bg-green-100 text-green-600' : 'hover:bg-gray-200 text-gray-700'}`
                     }
-                    onClick={() => window.innerWidth < 768 && setIsMobileMenuOpen(false)}
+                    onClick={() => handleMobileClick()}
                   >
-                    <FiUser className="text-lg mr-2" />
+                    <FiUser className="text-lg mr-3" />
                     <span>My Profile</span>
                   </NavLink>
                   
                   <NavLink
                     to="/settings"
                     className={({ isActive }) => 
-                      `flex items-center p-2 rounded-lg transition-colors ${isActive ? 'bg-green-100 text-green-600' : 'hover:bg-gray-200 text-gray-700'}`
+                      `flex items-center p-3 rounded-lg transition-colors ${isActive ? 'bg-green-100 text-green-600' : 'hover:bg-gray-200 text-gray-700'}`
                     }
-                    onClick={() => window.innerWidth < 768 && setIsMobileMenuOpen(false)}
+                    onClick={() => handleMobileClick()}
                   >
-                    <FiSettings className="text-lg mr-2" />
+                    <FiSettings className="text-lg mr-3" />
                     <span>Settings</span>
                   </NavLink>
                   
                   <button
                     onClick={handleLogout}
-                    className="flex items-center w-full p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+                    className="flex items-center w-full p-3 rounded-lg text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
                   >
-                    <FiLogOut className="text-lg mr-2" />
+                    <FiLogOut className="text-lg mr-3" />
                     <span>Logout</span>
                   </button>
                 </div>
               )}
 
-              {/* Collapsed view - just the logout button */}
               {isCollapsed && (
                 <button
                   onClick={handleLogout}
-                  className="flex items-center justify-center w-full p-3 rounded-lg text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+                  className="flex items-center justify-center w-full p-4 rounded-lg text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
                 >
                   <FiLogOut className="text-xl" />
                 </button>
@@ -292,12 +308,12 @@ const Sidebar = () => {
             <NavLink
               to="/"
               className={({ isActive }) => 
-                `flex items-center p-3 rounded-lg transition-colors ${isActive ? 'bg-green-100 text-green-600' : 'hover:bg-gray-200 text-gray-700'} ${isCollapsed ? 'justify-center' : ''}`
+                `flex items-center p-4 rounded-lg transition-colors ${isActive ? 'bg-green-100 text-green-600' : 'hover:bg-gray-200 text-gray-700'} ${isCollapsed ? 'justify-center' : ''}`
               }
-              onClick={() => window.innerWidth < 768 && setIsMobileMenuOpen(false)}
+              onClick={() => handleMobileClick()}
             >
-              <FiLogIn className="text-xl" />
-              {!isCollapsed && <span className="ml-3">Login</span>}
+              <FiLogIn className="text-xl min-w-[24px]" />
+              {!isCollapsed && <span className="ml-4">Login</span>}
             </NavLink>
           )}
         </div>
