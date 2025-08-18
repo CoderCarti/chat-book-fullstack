@@ -25,9 +25,6 @@ connectDB();
 // Initialize Express app
 const app = express();
 
-// Handle OPTIONS requests first
-app.options('*', cors());
-
 // Enhanced CORS middleware
 app.use(
   cors({
