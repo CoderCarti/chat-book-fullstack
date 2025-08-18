@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   profilePicture: {
     type: String,
-    default: 'https://vercel-blob-public-url.com/default-avatar.jpg'
+    default: ""
   },
   phoneNumber: {
     type: String,
