@@ -69,37 +69,51 @@ const Profile = () => {
   };
 
   const handleSave = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
+  const token = localStorage.getItem('token');
+  if (!token) {
+    navigate('/login');
+    return;
+  }
 
-    try {
-      setIsLoading(true);
-      const updatedData = {
-        ...formData,
-        phoneNumber,
-        profilePicture: profilePic
-      };
+  try {
+    setIsLoading(true);
+    const updatedData = {
+      fullName: formData.username, // Map username to fullName
+      phoneNumber,
+      profilePicture: profilePic,
+      dateOfBirth: formData.dateOfBirth,
+      country: formData.country,
+      city: formData.city,
+      postalCode: formData.postalCode
+    };
 
-      await axios.put('https://chat-book-server.vercel.app/api/profile', updatedData, {
+    const response = await axios.put(
+      'https://chat-book-server.vercel.app/api/profile', 
+      updatedData,
+      {
         headers: {
           'x-auth-token': token,
           'Content-Type': 'application/json'
         },
         withCredentials: true
-      });
+      }
+    );
 
-      toast.success("Profile updated successfully!");
-      setShowModal(false);
-    } catch (error) {
-      console.error('Update error:', error);
+    toast.success("Profile updated successfully!");
+    setShowModal(false);
+  } catch (error) {
+    console.error('Full error:', error);
+    if (error.response?.status === 401) {
+      toast.error("Session expired. Please log in again.");
+      localStorage.removeItem('token');
+      navigate('/login');
+    } else {
       toast.error(error.response?.data?.message || "Failed to update profile");
-    } finally {
-      setIsLoading(false);
     }
-  };
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleProfilePicChange = (e) => {
     const file = e.target.files[0];
