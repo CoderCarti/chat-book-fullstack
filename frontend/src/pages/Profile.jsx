@@ -26,7 +26,7 @@ const Profile = () => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
-      navigate('/login');
+      navigate('/homepage');
       return;
     }
 
@@ -54,8 +54,7 @@ const Profile = () => {
       } catch (error) {
         toast.error("Failed to load profile");
         if (error.response?.status === 401) {
-          localStorage.removeItem('token');
-          navigate('/login');
+          console.log("Failed to load profile");
         }
       } finally {
         setIsLoading(false);
