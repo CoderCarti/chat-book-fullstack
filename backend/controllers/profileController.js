@@ -37,29 +37,27 @@ exports.updateProfile = async (req, res) => {
     };
 
     // Handle profile picture upload
-    if (profilePicture) {
-      if (profilePicture === 'remove') {
-        // Handle profile picture removal
-        updateData.profilePicture = "";
-      } else if (profilePicture.startsWith('data:image')) {
-        // Upload new image to Vercel Blob
-        const blob = await put(
-          `profile-pictures/${req.user.id}-${Date.now()}`,
-          profilePicture, 
-          {
-            access: 'public',
-            token: process.env.BLOB_READ_WRITE_TOKEN
-          }
-        );
-        updateData.profilePicture = blob.url;
-      }
-      // If it's already a URL (from previous upload), keep it as is
+     // Handle profile picture upload/removal
+    if (profilePicture === 'remove') {
+      updateData.profilePicture = ""; // Remove profile picture
+    } else if (profilePicture && profilePicture.startsWith('data:image')) {
+      // Upload new image to Vercel Blob
+      const blob = await put(
+        `profile-pictures/${req.user.id}-${Date.now()}.${profilePicture.split(';')[0].split('/')[1]}`, // Adds extension
+        profilePicture, 
+        {
+          access: 'public',
+          token: process.env.BLOB_READ_WRITE_TOKEN
+        }
+      );
+      updateData.profilePicture = blob.url;
     }
+    // If it's already a URL, it will remain unchanged
 
     const updatedUser = await User.findByIdAndUpdate(
       req.user.id,
       updateData,
-      { new: true, runValidators: true }
+      { new: true }
     ).select('-password');
 
     res.json(updatedUser);

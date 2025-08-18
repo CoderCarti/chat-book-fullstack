@@ -5,7 +5,7 @@ import 'react-phone-number-input/style.css';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
-import defaultAvatar from "../assets/images/gadonski_img.png";
+import defaultAvatar from "../assets/images/default-avatar.png";
 
 const Profile = () => {
   const navigate = useNavigate();
