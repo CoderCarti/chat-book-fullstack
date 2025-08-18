@@ -53,13 +53,17 @@ const Profile = () => {
 
       setPhoneNumber(userData.phoneNumber || "");
 
-      // ✅ Only one clean check for profile picture
-      if (userData.profilePicture && userData.profilePicture.trim() !== "") {
+      // Add debug logging
+      console.log('Profile picture from backend:', userData.profilePicture);
+      
+      // Update profile picture handling
+      if (userData.profilePicture && typeof userData.profilePicture === 'string' && userData.profilePicture.length > 0) {
+        console.log('Setting profile picture from backend');
         setProfilePic(userData.profilePicture);
       } else {
+        console.log('Using default avatar');
         setProfilePic(defaultAvatar);
       }
-
 
     } catch (error) {
       console.error('Profile load error:', error);
@@ -81,7 +85,7 @@ const Profile = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSave = async () => {
+ const handleSave = async () => {
   const token = localStorage.getItem('token');
   if (!token) {
     navigate('/login');
@@ -99,8 +103,10 @@ const Profile = () => {
       country: formData.country,
       city: formData.city,
       postalCode: formData.postalCode,
-      profilePicture: profilePic // Use the profilePic state instead
+      profilePicture: profilePic !== defaultAvatar ? profilePic : null // Only send if not default
     };
+
+    console.log('Sending profile update with picture:', profilePic !== defaultAvatar);
 
     const response = await axios.put(
       'https://chat-book-server.vercel.app/api/profile', 
@@ -168,13 +174,14 @@ const Profile = () => {
       <div className="bg-white shadow rounded-2xl p-6 mb-6 flex flex-col sm:flex-row items-center gap-6">
         <div className="relative group w-32 h-32">
           <img
-            src={profilePic}
+            src={profilePic || defaultAvatar}
             alt="Profile"
             className="w-32 h-32 rounded-full object-cover"
             onError={(e) => {
               console.log('Image load error, falling back to default');
               e.target.src = defaultAvatar;
             }}
+            onLoad={() => console.log('Image loaded successfully:', profilePic.substring(0, 50) + '...')}
           />
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
             <label className="cursor-pointer p-2 text-white hover:text-green-300">

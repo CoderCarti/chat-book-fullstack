@@ -86,3 +86,66 @@ exports.loginUser = async (req, res) => {
     });
   }
 };
+
+// Add this to your authController.js
+exports.getSuggestedFriends = async (req, res) => {
+  try {
+    // Get the current user's ID from the auth middleware
+    const currentUserId = req.user.id;
+    
+    // Find users who are not friends with the current user
+    // For now, we'll just get all users except the current user
+    // In a real app, you'd want more sophisticated logic (mutual friends, location, etc.)
+    const users = await User.find({ 
+      _id: { $ne: currentUserId } 
+    }).select('-password -__v'); // Exclude sensitive fields
+
+    res.status(200).json(users);
+  } catch (error) {
+    console.error('Error fetching suggested friends:', error);
+    res.status(500).json({ 
+      message: error.message || 'Error fetching suggested friends' 
+    });
+  }
+};
+
+// Add to authController.js
+exports.sendFriendRequest = async (req, res) => {
+  try {
+    const { recipientId } = req.body;
+    const senderId = req.user.id;
+
+    // Check if users exist
+    const [sender, recipient] = await Promise.all([
+      User.findById(senderId),
+      User.findById(recipientId)
+    ]);
+
+    if (!sender || !recipient) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if request already exists
+    if (sender.outgoingRequests.includes(recipientId) || 
+        recipient.incomingRequests.includes(senderId)) {
+      return res.status(400).json({ message: 'Friend request already sent' });
+    }
+
+    // Update both users
+    await Promise.all([
+      User.findByIdAndUpdate(senderId, { 
+        $addToSet: { outgoingRequests: recipientId } 
+      }),
+      User.findByIdAndUpdate(recipientId, { 
+        $addToSet: { incomingRequests: senderId } 
+      })
+    ]);
+
+    res.status(200).json({ message: 'Friend request sent successfully' });
+  } catch (error) {
+    console.error('Error sending friend request:', error);
+    res.status(500).json({ 
+      message: error.message || 'Error sending friend request' 
+    });
+  }
+};
