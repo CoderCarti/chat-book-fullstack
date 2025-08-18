@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { RiPencilFill } from "react-icons/ri";
+import { RiPencilFill, RiDeleteBinLine } from "react-icons/ri";
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import axios from 'axios';
@@ -41,7 +41,7 @@ const Profile = () => {
         
         const userData = response.data;
         setFormData({
-          username: userData.username || "",
+          username: userData.username || userData.fullName || "",
           email: userData.email,
           dateOfBirth: userData.dateOfBirth ? new Date(userData.dateOfBirth).toISOString().split('T')[0] : "",
           country: userData.country || "",
@@ -54,7 +54,8 @@ const Profile = () => {
       } catch (error) {
         toast.error("Failed to load profile");
         if (error.response?.status === 401) {
-          console.log("Failed to load profile");
+          localStorage.removeItem('token');
+          navigate('/login');
         }
       } finally {
         setIsLoading(false);
@@ -69,51 +70,51 @@ const Profile = () => {
   };
 
   const handleSave = async () => {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    navigate('/login');
-    return;
-  }
-
-  try {
-    setIsLoading(true);
-    const updatedData = {
-      fullName: formData.username, // Map username to fullName
-      phoneNumber,
-      profilePicture: profilePic,
-      dateOfBirth: formData.dateOfBirth,
-      country: formData.country,
-      city: formData.city,
-      postalCode: formData.postalCode
-    };
-
-    const response = await axios.put(
-      'https://chat-book-server.vercel.app/api/profile', 
-      updatedData,
-      {
-        headers: {
-          'x-auth-token': token,
-          'Content-Type': 'application/json'
-        },
-        withCredentials: true
-      }
-    );
-
-    toast.success("Profile updated successfully!");
-    setShowModal(false);
-  } catch (error) {
-    console.error('Full error:', error);
-    if (error.response?.status === 401) {
-      toast.error("Session expired. Please log in again.");
-      localStorage.removeItem('token');
+    const token = localStorage.getItem('token');
+    if (!token) {
       navigate('/login');
-    } else {
-      toast.error(error.response?.data?.message || "Failed to update profile");
+      return;
     }
-  } finally {
-    setIsLoading(false);
-  }
-};
+
+    try {
+      setIsLoading(true);
+      const updatedData = {
+        fullName: formData.username,
+        phoneNumber,
+        profilePicture: profilePic === defaultAvatar ? 'remove' : profilePic,
+        dateOfBirth: formData.dateOfBirth,
+        country: formData.country,
+        city: formData.city,
+        postalCode: formData.postalCode
+      };
+
+      await axios.put(
+        'https://chat-book-server.vercel.app/api/profile', 
+        updatedData,
+        {
+          headers: {
+            'x-auth-token': token,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        }
+      );
+
+      toast.success("Profile updated successfully!");
+      setShowModal(false);
+    } catch (error) {
+      console.error('Update error:', error);
+      if (error.response?.status === 401) {
+        toast.error("Session expired. Please log in again.");
+        localStorage.removeItem('token');
+        navigate('/login');
+      } else {
+        toast.error(error.response?.data?.message || "Failed to update profile");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleProfilePicChange = (e) => {
     const file = e.target.files[0];
@@ -121,11 +122,11 @@ const Profile = () => {
 
     // Validate file
     if (!file.type.startsWith('image/')) {
-      toast.error("Please upload an image file");
+      toast.error("Please upload an image file (JPEG, PNG)");
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) { // 2MB limit
+    if (file.size > 2 * 1024 * 1024) {
       toast.error("Image size should be less than 2MB");
       return;
     }
@@ -135,6 +136,10 @@ const Profile = () => {
       setProfilePic(reader.result);
     };
     reader.readAsDataURL(file);
+  };
+
+  const removeProfilePicture = () => {
+    setProfilePic(defaultAvatar);
   };
 
   if (isLoading) {
@@ -152,21 +157,32 @@ const Profile = () => {
 
       {/* Profile Info */}
       <div className="bg-white shadow rounded-2xl p-6 mb-6 flex flex-col sm:flex-row items-center gap-6">
-        <div className="relative group">
+        <div className="relative group w-32 h-32">
           <img
             src={profilePic}
             alt="profile"
-            className="w-24 h-24 rounded-full object-cover border-2 border-gray-200 shadow-sm"
+            className="w-full h-full rounded-full object-cover border-2 border-gray-200 shadow-sm"
           />
-          <label className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-            <RiPencilFill className="text-white text-xl"/>
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleProfilePicChange}
-            />
-          </label>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+            <label className="cursor-pointer p-2 text-white hover:text-green-300">
+              <RiPencilFill className="text-xl"/>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleProfilePicChange}
+              />
+            </label>
+            {profilePic !== defaultAvatar && (
+              <button 
+                onClick={removeProfilePicture}
+                className="p-2 text-white hover:text-red-300"
+                title="Remove photo"
+              >
+                <RiDeleteBinLine className="text-xl"/>
+              </button>
+            )}
+          </div>
         </div>
         <div className="text-center sm:text-left">
           <h2 className="text-xl font-semibold">{formData.username}</h2>
