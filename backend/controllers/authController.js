@@ -21,7 +21,7 @@ exports.registerUser = async (req, res) => {
       email, 
       password,
       // Set default profile picture from environment if available
-      profilePicture: process.env.DEFAULT_PROFILE_PIC || ''
+      profilePicture: ''
     });
 
     // Generate token
