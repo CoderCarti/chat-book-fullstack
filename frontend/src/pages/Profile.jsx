@@ -24,71 +24,58 @@ const Profile = () => {
 
   // Fetch user data on component mount
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/homepage');
-      return;
-    }
-
-    // In your fetchUserData function
-const fetchUserData = async () => {
-  try {
-    const response = await axios.get('https://chat-book-server.vercel.app/api/profile', {
-      headers: {
-        'x-auth-token': localStorage.getItem('token')
-      },
-      withCredentials: true
-    });
-    
-    const userData = response.data;
-    console.log('Received profile data:', userData); // Debug what's received
-    setFormData({
-      username: userData.username || userData.fullName || "",
-      email: userData.email,
-      dateOfBirth: userData.dateOfBirth ? new Date(userData.dateOfBirth).toISOString().split('T')[0] : "",
-      country: userData.country || "",
-      city: userData.city || "",
-      postalCode: userData.postalCode || ""
-    });
-    
-    setPhoneNumber(userData.phoneNumber || '');
-
-      // Set profile picture FIRST before other states
-    if (userData.profilePicture && userData.profilePicture !== "") {
-      setProfilePic(userData.profilePicture);
-    } else {
-      setProfilePic(defaultAvatar);
-    }
-    
-    // Handle profile picture initialization properly
-    if (userData.profilePicture) {
-      // If it's a URL (from Vercel Blob or previous upload)
-      if (typeof userData.profilePicture === 'string' && 
-          (userData.profilePicture.startsWith('http') || 
-           userData.profilePicture.startsWith('https'))) {
-        setProfilePic(userData.profilePicture);
-      } 
-      // If it's base64 data (recent upload not yet processed)
-      else if (userData.profilePicture.startsWith('data:image')) {
-        setProfilePic(userData.profilePicture);
-      }
-    } else {
-      setProfilePic(defaultAvatar);
-    }
-    
-  } catch (error) {
-    console.error('Profile load error:', error);
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      navigate('/login');
-    }
-    toast.error("Failed to load profile data");
-  } finally {
-    setIsLoading(false);
+  const token = localStorage.getItem('token');
+  if (!token) {
+    navigate('/homepage');
+    return;
   }
-};
-    fetchUserData();
-  }, [navigate]);
+
+  const fetchUserData = async () => {
+    try {
+      const response = await axios.get('https://chat-book-server.vercel.app/api/profile', {
+        headers: {
+          'x-auth-token': token
+        },
+        withCredentials: true
+      });
+
+      const userData = response.data;
+      console.log('Received profile data:', userData);
+
+      setFormData({
+        username: userData.username || userData.fullName || "",
+        email: userData.email,
+        dateOfBirth: userData.dateOfBirth ? new Date(userData.dateOfBirth).toISOString().split('T')[0] : "",
+        country: userData.country || "",
+        city: userData.city || "",
+        postalCode: userData.postalCode || ""
+      });
+
+      setPhoneNumber(userData.phoneNumber || "");
+
+      // ✅ Only one clean check for profile picture
+      if (userData.profilePicture && userData.profilePicture.trim() !== "") {
+        setProfilePic(userData.profilePicture);
+      } else {
+        setProfilePic(defaultAvatar);
+      }
+
+
+    } catch (error) {
+      console.error('Profile load error:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+      toast.error("Failed to load profile data");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  fetchUserData();
+}, [navigate]);
+
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -106,23 +93,14 @@ const fetchUserData = async () => {
     
     // Prepare the updated data
     const updatedData = {
-  fullName: formData.username,
-  phoneNumber,
-  dateOfBirth: formData.dateOfBirth,
-  country: formData.country,
-  city: formData.city,
-  postalCode: formData.postalCode,
-  profilePicture:
-    profilePic === defaultAvatar
-      ? "remove"
-      : profilePic
-};
-
-    // Debug what we're sending
-    console.log('Sending update data:', {
-      ...updatedData,
-      profilePicture: updatedData.profilePicture?.substring(0, 50) + '...' // Log partial image data
-    });
+      fullName: formData.username,
+      phoneNumber,
+      dateOfBirth: formData.dateOfBirth,
+      country: formData.country,
+      city: formData.city,
+      postalCode: formData.postalCode,
+      profilePicture: profilePic // Use the profilePic state instead
+    };
 
     const response = await axios.put(
       'https://chat-book-server.vercel.app/api/profile', 
@@ -140,20 +118,8 @@ const fetchUserData = async () => {
     toast.success("Profile updated successfully!");
     setShowModal(false);
   } catch (error) {
-    console.error('Full error details:', {
-      message: error.message,
-      response: error.response?.data,
-      request: error.request,
-      config: error.config
-    });
-    
-    if (error.response?.status === 401) {
-      toast.error("Session expired. Please log in again.");
-      localStorage.removeItem('token');
-      navigate('/login');
-    } else {
-      toast.error(error.response?.data?.message || "Failed to update profile");
-    }
+    console.error('Error updating profile:', error);
+    toast.error(error.response?.data?.message || "Failed to update profile");
   } finally {
     setIsLoading(false);
   }
@@ -202,14 +168,13 @@ const fetchUserData = async () => {
       <div className="bg-white shadow rounded-2xl p-6 mb-6 flex flex-col sm:flex-row items-center gap-6">
         <div className="relative group w-32 h-32">
           <img
-            src={profilePic === defaultAvatar ? defaultAvatar : profilePic}
-            alt="profile"
-            className="w-full h-full rounded-full object-cover border-2 border-gray-200 shadow-sm"
+            src={profilePic}
+            alt="Profile"
+            className="w-32 h-32 rounded-full object-cover"
             onError={(e) => {
-              // Fallback to default avatar if image fails to load
+              console.log('Image load error, falling back to default');
               e.target.src = defaultAvatar;
             }}
-             key={profilePic} // Force re-render when URL changes
           />
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
             <label className="cursor-pointer p-2 text-white hover:text-green-300">
