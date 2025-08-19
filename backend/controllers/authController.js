@@ -115,19 +115,20 @@ exports.sendFriendRequest = async (req, res) => {
   try {
     const { recipientId } = req.body;
     const senderId = req.user.id;
+    const io = req.app.get('io'); // Get io instance from app
 
     // Check if users exist
-    const [senderUser, recipient] = await Promise.all([
-      User.findById(senderId),
+    const [sender, recipient] = await Promise.all([
+      User.findById(senderId).select('username fullName profilePicture'),
       User.findById(recipientId)
     ]);
 
-    if (!senderUser || !recipient) {
+    if (!sender || !recipient) {
       return res.status(404).json({ message: 'User not found' });
     }
 
     // Check if request already exists
-    if (senderUser.outgoingRequests.includes(recipientId) || 
+    if (sender.outgoingRequests.includes(recipientId) || 
         recipient.incomingRequests.includes(senderId)) {
       return res.status(400).json({ message: 'Friend request already sent' });
     }
@@ -142,12 +143,12 @@ exports.sendFriendRequest = async (req, res) => {
       })
     ]);
 
-    // Use senderUser instead of redeclaring sender
+    // Create notification
     const notification = await Notification.create({
       recipient: recipientId,
       sender: senderId,
       type: 'friend_request',
-      message: `${senderUser.fullName || senderUser.username} sent you a friend request`,
+      message: `${sender.fullName || sender.username} sent you a friend request`,
       relatedEntity: senderId,
       onModel: 'User'
     });
@@ -171,7 +172,7 @@ exports.sendFriendRequest = async (req, res) => {
       message: error.message || 'Error sending friend request' 
     });
   }
-};  
+};
 
 exports.handleFriendRequest = async (req, res) => {
   try {
