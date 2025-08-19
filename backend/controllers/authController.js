@@ -115,17 +115,30 @@ exports.sendFriendRequest = async (req, res) => {
   try {
     const { recipientId } = req.body;
     const senderId = req.user.id;
-    const io = req.app.get('io'); // Get io instance from app
+    const io = req.app.get('io');
 
-    // Check if users exist
+    // Validate recipientId format
+    if (!mongoose.Types.ObjectId.isValid(recipientId)) {
+      return res.status(400).json({ message: 'Invalid recipient ID' });
+    }
+
+    // Check if users exist with proper field selection
     const [sender, recipient] = await Promise.all([
-      User.findById(senderId).select('username fullName profilePicture'),
+      User.findById(senderId)
+        .select('username fullName profilePicture outgoingRequests')
+        .lean(),
       User.findById(recipientId)
+        .select('incomingRequests')
+        .lean()
     ]);
 
     if (!sender || !recipient) {
       return res.status(404).json({ message: 'User not found' });
     }
+
+    // Initialize arrays if they don't exist
+    sender.outgoingRequests = sender.outgoingRequests || [];
+    recipient.incomingRequests = recipient.incomingRequests || [];
 
     // Check if request already exists
     if (sender.outgoingRequests.includes(recipientId) || 
@@ -133,14 +146,15 @@ exports.sendFriendRequest = async (req, res) => {
       return res.status(400).json({ message: 'Friend request already sent' });
     }
 
-    // Update both users
+    // Update both users using $addToSet to avoid duplicates
     await Promise.all([
-      User.findByIdAndUpdate(senderId, { 
-        $addToSet: { outgoingRequests: recipientId } 
-      }),
-      User.findByIdAndUpdate(recipientId, { 
-        $addToSet: { incomingRequests: senderId } 
-      })
+      User.findByIdAndUpdate(senderId, {
+        $addToSet: { outgoingRequests: recipientId }
+      }, { new: true }),
+      
+      User.findByIdAndUpdate(recipientId, {
+        $addToSet: { incomingRequests: senderId }
+      }, { new: true })
     ]);
 
     // Create notification
@@ -153,22 +167,25 @@ exports.sendFriendRequest = async (req, res) => {
       onModel: 'User'
     });
 
-    // Populate notification for real-time emission
+    // Populate notification
     const populatedNotification = await Notification.populate(notification, {
       path: 'sender',
       select: 'username fullName profilePicture'
     });
 
-    // Emit real-time notification to recipient
-    io.to(recipientId.toString()).emit('new-notification', populatedNotification);
+    // Emit real-time notification
+    if (io) {
+      io.to(recipientId.toString()).emit('new-notification', populatedNotification);
+    }
 
-    res.status(200).json({ 
+    return res.status(200).json({ 
       message: 'Friend request sent successfully',
       notification: populatedNotification
     });
+
   } catch (error) {
     console.error('Error sending friend request:', error);
-    res.status(500).json({ 
+    return res.status(500).json({ 
       message: error.message || 'Error sending friend request' 
     });
   }
