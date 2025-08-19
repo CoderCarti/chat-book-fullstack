@@ -5,17 +5,26 @@ const cors = require("cors");
 const cookieParser = require('cookie-parser');
 const authRoutes = require("./routes/authRoutes");
 const profileRoutes = require("./routes/profileRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 const http = require('http');
 const socketio = require('socket.io');
 
 dotenv.config();
 
-// Socket.io config
+// Initialize Express app first
+const app = express();
+
+// Then create HTTP server
 const server = http.createServer(app);
 const io = socketio(server, {
   cors: {
-    origin: "http://localhost:3000", // Your frontend URL
-    methods: ["GET", "POST"]
+    origin: [
+      'http://localhost:5173',
+      'https://chat-book-silk.vercel.app',
+      'https://chat-book-server.vercel.app'
+    ],
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
@@ -50,9 +59,6 @@ const connectDB = async () => {
 // Connect to database
 connectDB();
 
-// Initialize Express app
-const app = express();
-
 // Enhanced CORS middleware
 app.use(
   cors({
@@ -67,12 +73,12 @@ app.use(
       'Content-Type',
       'Authorization',
       'X-Requested-With',
-      'x-auth-token',  // Explicitly allow your custom header
+      'x-auth-token',
       'Set-Cookie'
     ],
     exposedHeaders: [
       'Set-Cookie',
-      'x-auth-token'  // Expose if needed by the client
+      'x-auth-token'
     ],
     preflightContinue: false,
     optionsSuccessStatus: 204
@@ -86,6 +92,7 @@ app.use(express.json());
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -93,6 +100,6 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Something broke!' });
 });
 
-// Start server
+// Start server with server.listen() instead of app.listen()
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

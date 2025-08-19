@@ -18,7 +18,6 @@ import { IoIosNotifications } from "react-icons/io";
 import { RiChatSmileLine } from 'react-icons/ri';
 import { IoMdPersonAdd } from "react-icons/io";
 import axios from 'axios';
-import io from 'socket.io-client';
 
 const Sidebar = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -33,18 +32,21 @@ const Sidebar = () => {
   const channelsRef = useRef(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
+useEffect(() => {
     const token = localStorage.getItem('token');
-    setIsLoggedIn(!!token);
+    const isAuthenticated = !!token;
+    setIsLoggedIn(isAuthenticated);
     
-    if (token) {
+    if (isAuthenticated) {
       // Fetch initial unread count
       const fetchUnreadCount = async () => {
         try {
           const response = await axios.get('https://chat-book-server.vercel.app/api/notifications/unread-count', {
             headers: {
-              Authorization: `Bearer ${token}`
-            }
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            withCredentials: true
           });
           setUnreadCount(response.data.count);
         } catch (error) {
@@ -54,23 +56,27 @@ const Sidebar = () => {
 
       fetchUnreadCount();
 
-      // Set up socket.io connection
-      const newSocket = io('https://chat-book-server.vercel.app'); // Your backend URL
-      setSocket(newSocket);
+      // Set up socket.io connection only in production
+      if (process.env.NODE_ENV === 'production') {
+        const newSocket = io('https://chat-book-server.vercel.app', {
+          withCredentials: true,
+          transports: ['websocket']
+        });
+        setSocket(newSocket);
 
-      // Join user's room
-      const userId = jwt_decode(token).id;
-      newSocket.emit('join-user', userId);
+        try {
+          const userId = jwt_decode(token).id;
+          newSocket.emit('join-user', userId);
 
-      // Listen for new notifications
-      newSocket.on('new-notification', () => {
-        setUnreadCount(prev => prev + 1);
-      });
-
-      return () => {
-        newSocket.disconnect();
-      };
+          newSocket.on('new-notification', () => {
+            setUnreadCount(prev => prev + 1);
+          });
+        } catch (decodeError) {
+          console.error('Error decoding token:', decodeError);
+        }
+      }
     }
+
     const handleResize = () => {
       if (window.innerWidth < 768) {
         setIsCollapsed(true);
@@ -79,9 +85,15 @@ const Sidebar = () => {
     
     handleResize();
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (socket) {
+        socket.disconnect();
+      }
+    };
   }, []);
 
+  
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (channelsRef.current && !channelsRef.current.contains(event.target)) {
