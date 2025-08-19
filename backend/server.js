@@ -24,8 +24,11 @@ const io = socketio(server, {
       'https://chat-book-server.vercel.app'
     ],
     methods: ["GET", "POST"],
-    credentials: true
-  }
+    credentials: true,
+    transports: ['websocket', 'polling'] // Explicitly enable both transports
+  },
+  path: '/socket.io', // Explicit path
+  serveClient: false // Don't serve client files
 });
 
 // Socket.io connection handling

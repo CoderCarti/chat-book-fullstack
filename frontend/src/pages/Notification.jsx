@@ -78,7 +78,22 @@ const Notification = ({ userId }) => {
     }
   };
 
-  // Similar handler for decline...
+  const handleDeclineFriend = async (senderId) => {
+    try {
+      await axios.post('/api/auth/handle-friend-request', {
+        senderId,
+        action: 'decline'
+      }, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      // Remove the notification
+      setNotifications(prev => prev.filter(n => n.from.id !== senderId));
+    } catch (error) {
+      console.error('Error declining friend request:', error);
+    }
+  };
 
   return (
     <div className="fixed top-4 right-4 z-50 w-80 max-h-screen overflow-y-auto">
