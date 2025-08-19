@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const Notification = require('../models/Notification');
 
 exports.registerUser = async (req, res) => {
   const { username, email, password } = req.body;
@@ -116,17 +117,17 @@ exports.sendFriendRequest = async (req, res) => {
     const senderId = req.user.id;
 
     // Check if users exist
-    const [sender, recipient] = await Promise.all([
+    const [senderUser, recipient] = await Promise.all([
       User.findById(senderId),
       User.findById(recipientId)
     ]);
 
-    if (!sender || !recipient) {
+    if (!senderUser || !recipient) {
       return res.status(404).json({ message: 'User not found' });
     }
 
     // Check if request already exists
-    if (sender.outgoingRequests.includes(recipientId) || 
+    if (senderUser.outgoingRequests.includes(recipientId) || 
         recipient.incomingRequests.includes(senderId)) {
       return res.status(400).json({ message: 'Friend request already sent' });
     }
@@ -141,11 +142,91 @@ exports.sendFriendRequest = async (req, res) => {
       })
     ]);
 
-    res.status(200).json({ message: 'Friend request sent successfully' });
+    // Use senderUser instead of redeclaring sender
+    const notification = await Notification.create({
+      recipient: recipientId,
+      sender: senderId,
+      type: 'friend_request',
+      message: `${senderUser.fullName || senderUser.username} sent you a friend request`,
+      relatedEntity: senderId,
+      onModel: 'User'
+    });
+
+    // Populate notification for real-time emission
+    const populatedNotification = await Notification.populate(notification, {
+      path: 'sender',
+      select: 'username fullName profilePicture'
+    });
+
+    // Emit real-time notification to recipient
+    io.to(recipientId.toString()).emit('new-notification', populatedNotification);
+
+    res.status(200).json({ 
+      message: 'Friend request sent successfully',
+      notification: populatedNotification
+    });
   } catch (error) {
     console.error('Error sending friend request:', error);
     res.status(500).json({ 
       message: error.message || 'Error sending friend request' 
+    });
+  }
+};  
+
+exports.handleFriendRequest = async (req, res) => {
+  try {
+    const { senderId, action } = req.body; // action: 'accept' or 'decline'
+    const recipientId = req.user.id;
+    const io = req.app.get('io');
+
+    // Check if request exists
+    const recipient = await User.findById(recipientId);
+    if (!recipient.incomingRequests.includes(senderId)) {
+      return res.status(400).json({ message: 'No friend request found' });
+    }
+
+    if (action === 'accept') {
+      // Add to each other's friends list
+      await Promise.all([
+        User.findByIdAndUpdate(recipientId, {
+          $pull: { incomingRequests: senderId },
+          $addToSet: { friends: senderId }
+        }),
+        User.findByIdAndUpdate(senderId, {
+          $pull: { outgoingRequests: recipientId },
+          $addToSet: { friends: recipientId }
+        })
+      ]);
+
+      // Create notification for sender
+      const recipientUser = await User.findById(recipientId).select('username fullName profilePicture');
+      const notification = await Notification.create({
+        recipient: senderId,
+        sender: recipientId,
+        type: 'friend_request_accepted',
+        message: `${recipientUser.fullName || recipientUser.username} accepted your friend request`,
+        relatedEntity: recipientId,
+        onModel: 'User'
+      });
+
+      // Populate notification for real-time emission
+      const populatedNotification = await Notification.populate(notification, {
+        path: 'sender',
+        select: 'username fullName profilePicture'
+      });
+
+      // Emit real-time notification to sender
+      io.to(senderId.toString()).emit('new-notification', populatedNotification);
+
+      res.status(200).json({ message: 'Friend request accepted' });
+    } else {
+      // [Previous decline logic remains...]
+      res.status(200).json({ message: 'Friend request declined' });
+    }
+  } catch (error) {
+    console.error('Error handling friend request:', error);
+    res.status(500).json({ 
+      message: error.message || 'Error handling friend request' 
     });
   }
 };

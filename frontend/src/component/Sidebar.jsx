@@ -14,8 +14,11 @@ import {
   FiX,
   FiPlus
 } from 'react-icons/fi';
+import { IoIosNotifications } from "react-icons/io";
 import { RiChatSmileLine } from 'react-icons/ri';
 import { IoMdPersonAdd } from "react-icons/io";
+import axios from 'axios';
+import io from 'socket.io-client';
 
 const Sidebar = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -24,9 +27,60 @@ const Sidebar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isChannelsOpen, setIsChannelsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [socket, setSocket] = useState(null);
   const sidebarRef = useRef(null);
   const channelsRef = useRef(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    setIsLoggedIn(!!token);
+    
+    if (token) {
+      // Fetch initial unread count
+      const fetchUnreadCount = async () => {
+        try {
+          const response = await axios.get('https://chat-book-server.vercel.app/api/notifications/unread-count', {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+          setUnreadCount(response.data.count);
+        } catch (error) {
+          console.error('Error fetching unread count:', error);
+        }
+      };
+
+      fetchUnreadCount();
+
+      // Set up socket.io connection
+      const newSocket = io('https://chat-book-server.vercel.app'); // Your backend URL
+      setSocket(newSocket);
+
+      // Join user's room
+      const userId = jwt_decode(token).id;
+      newSocket.emit('join-user', userId);
+
+      // Listen for new notifications
+      newSocket.on('new-notification', () => {
+        setUnreadCount(prev => prev + 1);
+      });
+
+      return () => {
+        newSocket.disconnect();
+      };
+    }
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setIsCollapsed(true);
+      }
+    };
+    
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -228,7 +282,7 @@ const Sidebar = () => {
           </NavLink>
 
           <NavLink
-            to="/add-friend"
+            to="/addfriend"
             className={({ isActive }) => 
               `flex items-center p-4 rounded-lg transition-colors ${isActive ? 'bg-green-100 text-green-600' : 'hover:bg-gray-200 text-gray-700'}`
             }
@@ -237,6 +291,28 @@ const Sidebar = () => {
             <IoMdPersonAdd className="text-xl min-w-[24px]" />
             {!isCollapsed && <span className="ml-4">Add Friend</span>}
           </NavLink>
+
+          <NavLink
+          to="/notifications"
+          className={({ isActive }) => 
+            `flex items-center p-4 rounded-lg transition-colors relative ${isActive ? 'bg-green-100 text-green-600' : 'hover:bg-gray-200 text-gray-700'}`
+          }
+          onClick={() => handleMobileClick()}
+        >
+          <div className="relative">
+            <IoIosNotifications className="text-xl min-w-[24px]" />
+            {unreadCount > 0 && (
+              <span className={`
+                absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full 
+                ${isCollapsed ? 'w-4 h-4' : 'w-5 h-5'} 
+                flex items-center justify-center
+              `}>
+                {isCollapsed ? '' : unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </div>
+          {!isCollapsed && <span className="ml-4">Notifications</span>}
+        </NavLink>
         </nav>
 
         {/* Profile Section */}

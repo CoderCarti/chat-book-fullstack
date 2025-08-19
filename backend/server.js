@@ -5,8 +5,36 @@ const cors = require("cors");
 const cookieParser = require('cookie-parser');
 const authRoutes = require("./routes/authRoutes");
 const profileRoutes = require("./routes/profileRoutes");
+const http = require('http');
+const socketio = require('socket.io');
 
 dotenv.config();
+
+// Socket.io config
+const server = http.createServer(app);
+const io = socketio(server, {
+  cors: {
+    origin: "http://localhost:3000", // Your frontend URL
+    methods: ["GET", "POST"]
+  }
+});
+
+// Socket.io connection handling
+io.on('connection', (socket) => {
+  console.log('New client connected');
+  
+  // Join user to their own room for private notifications
+  socket.on('join-user', (userId) => {
+    socket.join(userId);
+    console.log(`User ${userId} joined their room`);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected');
+  });
+});
+
+app.set('io', io);
 
 // Database connection
 const connectDB = async () => {
