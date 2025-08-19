@@ -43,4 +43,17 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   }
 });
 
+router.get('/unread-count', authMiddleware, async (req, res) => {
+  try {
+    const count = await Notification.countDocuments({
+      recipient: req.user.id,
+      read: false
+    });
+    res.status(200).json({ count });
+  } catch (error) {
+    console.error('Error fetching unread count:', error);
+    res.status(500).json({ message: 'Error fetching unread count' });
+  }
+});
+
 module.exports = router;

@@ -41,16 +41,21 @@ useEffect(() => {
       // Fetch initial unread count
       const fetchUnreadCount = async () => {
         try {
-          const response = await axios.get('https://chat-book-server.vercel.app/api/notifications/unread-count', {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            withCredentials: true
-          });
+          const response = await axios.get(
+            'https://chat-book-server.vercel.app/api/notifications/unread-count', 
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              withCredentials: true
+            }
+          );
           setUnreadCount(response.data.count);
         } catch (error) {
           console.error('Error fetching unread count:', error);
+          // Set count to 0 if endpoint doesn't exist or fails
+          setUnreadCount(0);
         }
       };
 
@@ -93,7 +98,7 @@ useEffect(() => {
     };
   }, []);
 
-  
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (channelsRef.current && !channelsRef.current.contains(event.target)) {
